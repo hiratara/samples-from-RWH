@@ -1,3 +1,5 @@
+module ControlledVisit (Info(..), getUsefulContents, isDirectory, getInfo) where
+
 import System.Time (ClockTime(..))
 import System.Directory (Permissions(..), getDirectoryContents, getPermissions, getModificationTime, )
 import System.FilePath ((</>))
