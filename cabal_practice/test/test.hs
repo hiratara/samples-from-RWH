@@ -1,10 +1,12 @@
 module Main where
 import Test.Framework
 
+import qualified Cabal.Practice.ServiceTest
+
 -- |
 --
 tests :: [Test]
-tests = []
+tests = [Cabal.Practice.ServiceTest.tests]
 
 -- |
 --
