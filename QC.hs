@@ -1,6 +1,11 @@
+{-# LANGUAGE TemplateHaskell #-}
+module QC where
+
 import Test.QuickCheck
+import Test.QuickCheck.All
 import Prettify2
 import Control.Monad (liftM, liftM2)
+import Data.List (intersperse)
 
 -- instance Arbitrary Doc where
 --     arbitrary = do
@@ -39,3 +44,15 @@ prop_text s = text s == if null s then Empty else Text s
 prop_line = line == Line
 prop_double d = double d == text (show d)
 
+prop_hcat xs = hcat xs == glue xs
+    where glue [] = empty
+          glue (d:ds) = d <> glue ds
+
+prop_punctuate s xs = punctuate s xs == combine (intersperse s xs)
+    where combine [] = []
+          combine [x] = [x]
+          combine (x:Empty:ys) = x : combine ys
+          combine (Empty:y:ys) = y : combine ys
+          combine (x:y:ys) = (Concat x y) : combine ys
+
+runTests = $quickCheckAll

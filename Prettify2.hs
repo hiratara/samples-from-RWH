@@ -24,3 +24,14 @@ double d = text (show d)
 
 line :: Doc
 line = Line
+
+fold :: (Doc -> Doc -> Doc) -> [Doc] -> Doc
+fold f = foldr f empty
+
+hcat :: [Doc] -> Doc
+hcat = fold (<>)
+
+punctuate :: Doc -> [Doc] -> [Doc]
+punctuate p []     = []
+punctuate p [d]    = [d]
+punctuate p (d:ds) = (d <> p) : punctuate p ds
