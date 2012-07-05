@@ -33,3 +33,9 @@ constrainedCount curDepth path = do
                 constrainedCount newDepth newPath
               else return []
   return $ (path, length contents) : concat rest
+
+implicitGet :: App AppState
+implicitGet = get
+
+explicitGet :: App AppState
+explicitGet = lift get
