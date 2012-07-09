@@ -11,6 +11,7 @@ module NiceFork
 import Control.Concurrent
 import Control.Exception (SomeException, try)
 import qualified Data.Map as M
+import Control.Monad (join)
 
 newtype ThreadManager =
     Mgr (MVar (M.Map ThreadId (MVar ThreadStatus)))
@@ -50,14 +51,19 @@ getStatus (Mgr mgr) tid =
           Just sth -> return (M.delete tid m, Just sth)
 
 waitFor :: ThreadManager -> ThreadId -> IO (Maybe ThreadStatus)
-waitFor (Mgr mgr) tid = do
-  maybeDone <- modifyMVar mgr $ \m ->
+-- waitFor (Mgr mgr) tid = do
+--   maybeDone <- modifyMVar mgr $ \m ->
+--     return $ case M.updateLookupWithKey (\_ _ -> Nothing) tid m of
+--       (Nothing, _) -> (m, Nothing)
+--       (done, m') -> (m', done)
+--   case maybeDone of
+--     Nothing -> return Nothing
+--     Just st -> Just `fmap` takeMVar st
+waitFor (Mgr mgr) tid =
+  join . modifyMVar mgr $ \m ->
     return $ case M.updateLookupWithKey (\_ _ -> Nothing) tid m of
-      (Nothing, _) -> (m, Nothing)
-      (done, m') -> (m', done)
-  case maybeDone of
-    Nothing -> return Nothing
-    Just st -> Just `fmap` takeMVar st
+      (Nothing, _) -> (m, return Nothing)
+      (Just st, m') -> (m', Just `fmap` takeMVar st)
 
 waitAll :: ThreadManager -> IO ()
 waitAll (Mgr mgr) = modifyMVar mgr elems >>= mapM_ takeMVar
