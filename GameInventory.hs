@@ -103,3 +103,46 @@ shoppingList list buyer seller = maybeM . msum $ map sellOne list
 -- maybeSTM m = (Just `liftM` m) `orElse` return Nothing
 maybeM :: MonadPlus m => m a -> m (Maybe a)
 maybeM m = (Just `liftM` m) `mplus` return Nothing
+
+
+-- Try invariant
+
+bogusTransfer :: Gold -> Balance -> Balance -> IO ()
+bogusTransfer qty fromBal toBal = do
+  fromQty <- atomically $ readTVar fromBal
+  -- window of inconsistency
+  toQty   <- atomically $ readTVar toBal
+  atomically $ writeTVar fromBal (fromQty - qty)
+  -- window of inconsistency
+  atomically $ writeTVar toBal   (toQty + qty)
+
+bogusSale :: Item -> Gold -> Player -> Player -> IO ()
+bogusSale item price buyer seller = do
+  atomically $ giveItem item (inventory seller) (inventory buyer)
+  bogusTransfer price (balance buyer) (balance seller)
+
+newPlayer :: Gold -> HitPoint -> [Item] -> STM Player
+newPlayer balance health inventory =
+    Player `liftM` newTVar balance
+              `ap` newTVar health
+              `ap` newTVar inventory
+
+populateWorld :: STM [Player]
+populateWorld = sequence [ newPlayer 20 20 [Wand, Banjo],
+                           newPlayer 10 12 [Scroll] ]
+
+consistentBalance :: [Player] -> STM (STM ())
+consistentBalance players = do
+    initialTotal <- totalBalance
+    return $ do
+      curTotal <- totalBalance
+      when (curTotal /= initialTotal) $
+        error "inconsistent global balance"
+  where totalBalance   = foldM addBalance 0 players
+        addBalance a b = (a+) `liftM` readTVar (balance b)
+
+tryBogusSale :: IO ()
+tryBogusSale = do
+  players@(alice:bob:_) <- atomically populateWorld
+  atomically $ alwaysSucceeds =<< consistentBalance players
+  bogusSale Wand 5 bob alice
